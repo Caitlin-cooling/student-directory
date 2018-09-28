@@ -1,10 +1,8 @@
-@students = [] #an empty array accessible to all methods
+require "csv"
+@students = []
 def print_menu
-  puts "1. Input the students"
-  puts "2. Show the students"
-  puts "3. Save the list to students.csv"
-  puts "4. Load the list from students.csv"
-  puts "9. Exit"
+  puts "1. Input the students", "2. Show the students", "3. Save the list of students",
+        "4. Load the list of students", "9. Exit"
 end
 def show_students
   print_header
@@ -19,9 +17,13 @@ def process(selection)
     show_students
   when "3"
     save_students
+      puts "File saved."
   when "4"
     load_students
+    try_load_students
+    puts "File loaded."
   when"9"
+    puts "Exiting now."
     exit
   else
     puts "I don't know what you mean, try again"
@@ -34,28 +36,30 @@ def interactive_menu
   end
 end
 def ask_for_name
-  puts "Please enter the name of a student"
-  puts "To finish, enter stop"
-  name = gets.tr("\n", "").downcase
+  puts "Please enter the name of a student", "To finish, enter stop"
+  @name = STDIN.gets.tr("\n", "").downcase
 end
 def input_students
-  @students = []
   while true do
-    name = ask_for_name
-    if name == "stop"
+    ask_for_name
+    if @name == "stop"
       break
-    elsif name == ""
+    elsif @name == ""
       puts "Please enter your name"
-      name = gets.tr("\n", "")
+      @name = STDIN.gets.tr("\n", "")
     end
-    puts "What cohort are they taking part in?"
-    cohort = gets.tr("\n", "")
-    if cohort == ""
-      cohort = "november"
-    end
-    @students << {name: name, cohort: cohort.to_sym}
+    input_cohort
+    add_students
     puts "Now we have #{@students.count} students"
   end
+end
+def input_cohort
+  puts "What cohort are they taking part in?"
+  @cohort = STDIN.gets.tr("\n", "")
+  @cohort = "november" if @cohort == ""
+end
+def add_students
+  @students << {name: @name, cohort: @cohort.to_sym}
 end
 def print_header
   puts "The student of Villians Academy".center(45)
@@ -65,35 +69,45 @@ def print_students_list
   sorted_students = @students.group_by{ |student| student[:cohort] }
   sorted_students.each do |cohort_month, students|
     students.each do |student|
-      puts "#{student[:name]} is in the #{student[:cohort]} cohort"
+      puts "#{student[:name]} is in the #{student[:cohort]} cohort".center(45)
     end
   end
 end
 def print_footer
   if @students.count == 1
-    puts "Overall, we have #{@students.count} great student"
+    puts "Overall, we have #{@students.count} great student".center(45)
   else
-    puts "Overall, we have #{@students.count} great students"
+    puts "Overall, we have #{@students.count} great students".center(45)
   end
 end
-
+def ask_for_file
+  puts "What is the name of the file"
+  gets.chomp
+end
 def save_students
-  file = File.open("students.csv", "w")
-  @students.each do |student|
-    student_data = [student[:name], student[:cohort]]
-    csv_line = student_data.join(",")
-    file.puts csv_line
+  CSV.open(ask_for_file, "a") do |file| #can you use a? or does it have to be wb?
+    @students.each do |student|
+      csv_line = [student[:name], student[:cohort]]
+      file << csv_line
+    end
   end
-  file.close
-  puts "File saved."
 end
-def load_students
-  file = File.open("students.csv", "r")
-  file.readlines.each do |line|
-    name, cohort = line.chomp.split(",")
-    @students << {name: name, cohort: cohort.to_sym}
+def load_students(filename = ask_for_file)
+  CSV.foreach(filename) do |line|
+    @name, @cohort = line[0], line[1]
+      add_students
   end
-  file.close
+end
+def try_load_students
+  filename = ARGV.first
+  return if filename.nil?
+  if File.exists?(filename)
+    load_students(filename)
+    puts "Loaded #{@students.count} from #{filename}"
+  else
+    puts "Sorry, #{filename} doesn't exist"
+    exit
+  end
 end
 
-interactive_menu
+puts File.read(__FILE__)
